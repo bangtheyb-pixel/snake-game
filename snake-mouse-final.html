@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>🐍 Snake Realistic + Music</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #1a1a1a;
+    color: white;
+    font-family: sans-serif;
+  }
+  #score {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    font-size: 20px;
+    background: rgba(0,0,0,0.5);
+    padding: 5px 10px;
+    border-radius: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="score">Score: 0</div>
+<canvas id="gameCanvas"></canvas>
+
+<!-- Musik & Efek Suara -->
+<audio id="bgm" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_9b1b80ff5a.mp3?filename=snake-game-music-102253.mp3" loop></audio>
+<audio id="eatSound" src="https://cdn.pixabay.com/download/audio/2021/09/01/audio_3c7327f12d.mp3?filename=pop-94319.mp3"></audio>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+let W, H;
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// Variabel permainan
+let snake = [];
+let snakeLength = 20;
+let snakeSpacing = 10;
+let speed = 3;
+let score = 0;
+let target = { x: W/2, y: H/2 };
+let waveOffset = 0;
+
+// Makanan
+let food = { x: Math.random()*W, y: Math.random()*H };
+
+// Inisialisasi ular
+for (let i = 0; i < snakeLength; i++) {
+  snake.push({ x: W/2 - i*snakeSpacing, y: H/2, angle: 0 });
+}
+
+// Kontrol mouse/touch
+document.addEventListener("mousemove", e => {
+  target.x = e.clientX;
+  target.y = e.clientY;
+});
+document.addEventListener("touchmove", e => {
+  target.x = e.touches[0].clientX;
+  target.y = e.touches[0].clientY;
+});
+
+// Mulai musik saat user klik/tap (autoplay policy browser)
+document.addEventListener("click", () => {
+  document.getElementById("bgm").play();
+}, { once: true });
+
+// Update permainan
+function update() {
+  // Gerak kepala
+  let head = snake[0];
+  let dx = target.x - head.x;
+  let dy = target.y - head.y;
+  let angle = Math.atan2(dy, dx);
+  head.x += Math.cos(angle) * speed;
+  head.y += Math.sin(angle) * speed;
+  head.angle = angle;
+
+  // Efek gelombang tubuh
+  waveOffset += 0.2;
+
+  // Gerak badan mengikuti kepala
+  for (let i = 1; i < snake.length; i++) {
+    let prev = snake[i - 1];
+    let seg = snake[i];
+    let dx = prev.x - seg.x;
+    let dy = prev.y - seg.y;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+    let desiredDist = snakeSpacing + Math.sin(waveOffset + i*0.5) * 2;
+    let move = dist - desiredDist;
+    let angle = Math.atan2(dy, dx);
+    seg.x += Math.cos(angle) * move;
+    seg.y += Math.sin(angle) * move;
+    seg.angle = angle;
+  }
+
+  // Cek makan
+  if (Math.hypot(head.x - food.x, head.y - food.y) < 15) {
+    score++;
+    document.getElementById("score").textContent = "Score: " + score;
+    food.x = Math.random() * W;
+    food.y = Math.random() * H;
+    // Tambah segmen
+    let tail = snake[snake.length - 1];
+    snake.push({ x: tail.x, y: tail.y, angle: tail.angle });
+    // Mainkan suara makan
+    document.getElementById("eatSound").currentTime = 0;
+    document.getElementById("eatSound").play();
+  }
+}
+
+// Gambar permainan
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Gambar makanan
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(food.x, food.y, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Gambar ular
+  for (let i = snake.length - 1; i >= 0; i--) {
+    let seg = snake[i];
+    ctx.save();
+    ctx.translate(seg.x, seg.y);
+    ctx.rotate(seg.angle);
+
+    if (i === 0) {
+      // Kepala
+      ctx.fillStyle = "lime";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Mata
+      ctx.fillStyle = "black";
+      ctx.beginPath();
+      ctx.arc(4, -3, 2, 0, Math.PI*2);
+      ctx.arc(4, 3, 2, 0, Math.PI*2);
+      ctx.fill();
+    } else {
+      // Badan
+      ctx.fillStyle = "green";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 10 - i*0.05, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// Loop game
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
+</body>
+</html>
